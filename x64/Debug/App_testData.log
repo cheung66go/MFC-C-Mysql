@@ -1,5 +1,0 @@
-﻿C:\Program Files (x86)\MSBuild\Microsoft.Cpp\v4.0\V140\Microsoft.CppBuild.targets(392,5): warning MSB8028: The intermediate directory (x64\Debug\) contains files shared from another project (App_testData.vcxproj).  This can lead to incorrect clean and rebuild behavior.
-  AppTransData.cpp
-C:\Program Files (x86)\MSBuild\Microsoft.Cpp\v4.0\V140\Microsoft.CppBuild.targets(1189,5): warning MSB8012: TargetPath(D:\3d_cad_2\dev_apps\App_testData\x64\Debug\App_OperateData.dll) does not match the Linker's OutputFile property value (D:\3d_cad_2\bin\x64_debug\App_OperateData.dll). This may cause your project to build incorrectly. To correct this, please make sure that $(OutDir), $(TargetName) and $(TargetExt) property values match the value specified in %(Link.OutputFile).
-  App_testData.vcxproj -> D:\3d_cad_2\dev_apps\App_testData\x64\Debug\App_OperateData.dll
-  App_testData.vcxproj -> D:\3d_cad_2\dev_apps\App_testData\x64\Debug\App_OperateData.pdb (Partial PDB)
