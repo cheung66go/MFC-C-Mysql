@@ -3,80 +3,105 @@
 
 AcGeOperateDatabase::AcGeOperateDatabase()
 {
-	mysql_init(&m_sqlCon);//³õÊ¼»¯Êı¾İ¿â¶ÔÏó
+	mysql_init(&m_sqlCon);//åˆå§‹åŒ–æ•°æ®åº“å¯¹è±¡
 }
 
 
 AcGeOperateDatabase::~AcGeOperateDatabase()
 {
-	mysql_close(&m_sqlCon);//¹Ø±ÕMysqlÁ¬½Ó  
+	mysql_close(&m_sqlCon);//å…³é—­Mysqlè¿æ¥  
 }
 
-bool AcGeOperateDatabase::connectMysql(CString &username, CString &password, CString &databaseName,const int database_port)
+bool AcGeOperateDatabase::connectMysql(CString &m_username, CString &m_password, CString &databaseName,const int database_port)
 {
-	if (!mysql_real_connect(&m_sqlCon, "localhost", username, password, databaseName, database_port, NULL, 0))//localhost:·şÎñÆ÷µØÖ·£¬¿ÉÒÔÖ±½ÓÌîÈëIP;root:ÕËºÅ;123:ÃÜÂë;test:Êı¾İ¿âÃû;3306:ÍøÂç¶Ë¿Ú  
+	if (!mysql_real_connect(&m_sqlCon, "159.138.49.84", m_username, m_password, databaseName, database_port, NULL, 0))//localhost:æœåŠ¡å™¨åœ°å€ï¼Œå¯ä»¥ç›´æ¥å¡«å…¥IP;root:è´¦å·;123:å¯†ç ;test:æ•°æ®åº“å;3306:ç½‘ç»œç«¯å£  
 	{
 		CString temp = mysql_error(&m_sqlCon);
 		AfxMessageBox(temp);
 		return false;
 	}
-	else//Á¬½Ó³É¹¦Ôò¼ÌĞø·ÃÎÊÊı¾İ¿â£¬Ö®ºóµÄÏà¹Ø²Ù×÷´úÂë»ù±¾ÊÇ·ÅÔÚÕâÀïÃæµÄ
+	else//è¿æ¥æˆåŠŸåˆ™ç»§ç»­è®¿é—®æ•°æ®åº“
 	{
 		return true;
 	}
 
 }
 
-bool AcGeOperateDatabase::getInforFromDatabase(CString database_tableName)
+bool AcGeOperateDatabase::preInforFromDatabase(CString database_tableName,\
+	std::vector<std::vector<CString>>&dataTotalList, std::vector<CString>fieldNameList, std::vector<CString>paraList,bool isGetData )
 {
-	mysql_query(&m_sqlCon, "SET NAMES gbk");//ÉèÖÃÊı¾İ¿â×Ö·û¸ñÊ½£¬½â¾öÖĞÎÄÂÒÂëÎÊÌâ
+	dataTotalList.clear();
+	mysql_query(&m_sqlCon, "SET NAMES gbk");//è®¾ç½®æ•°æ®åº“å­—ç¬¦æ ¼å¼ï¼Œè§£å†³ä¸­æ–‡ä¹±ç é—®é¢˜
 	
-	findDataByPara(database_tableName);
+	findDataByPara(database_tableName, fieldNameList,paraList);
 
-	MYSQL_RES *res = mysql_store_result(&m_sqlCon);//µÃµ½´æ´¢½á¹û¼¯  
-	if (NULL == res)//Èç¹ûÎª¿ÕÔò·µ»Ø
+	MYSQL_RES *res = mysql_store_result(&m_sqlCon);//å¾—åˆ°å­˜å‚¨ç»“æœé›†  
+	if (NULL == res)//å¦‚æœä¸ºç©ºåˆ™è¿”å›
 	{
 		return false;
 	}
 
-	//ÁĞÊı
+	//åˆ—æ•°
 	unsigned int cols = mysql_num_fields(res);
 
-	//»ñÈ¡Êı¾İĞĞÊı
+	//è·å–æ•°æ®è¡Œæ•°
 	int rows=0;
 	rows=mysql_affected_rows(&m_sqlCon);
 
-
+	m_fieldList.clear();
 	for (int i = 0; MYSQL_FIELD *fd = mysql_fetch_field(res); i++)  
 		m_fieldList.push_back(fd->name);
 
-	// »ñÈ¡ÁĞÊı
+	// è·å–åˆ—æ•°
 	int j = mysql_num_fields(res);  
 
-	std::vector<std::vector<CString>>dataTotalList;
-	int listrow = 0;
-	MYSQL_ROW row;
-	while (row = mysql_fetch_row(res))//ÖØ¸´¶ÁÈ¡ĞĞ£¬°ÑÊı¾İ·ÅÈëÁĞ±íÖĞ£¬Ö±µ½rowÎªNULL  
+	if (isGetData == true)
 	{
-		std::vector<CString>fieldList;
-		for (int rols = 0; rols < cols; rols++)
+		int listrow = 0;
+		MYSQL_ROW row;
+		while (row = mysql_fetch_row(res))//é‡å¤è¯»å–è¡Œï¼ŒæŠŠæ•°æ®æ”¾å…¥åˆ—è¡¨ä¸­ï¼Œç›´åˆ°rowä¸ºNULL  
 		{
-			CString myreaddata(row[rols]);
-			fieldList.push_back(myreaddata);
+			std::vector<CString>fieldList;
+			for (int rols = 0; rols < cols; rols++)
+			{
+				CString myreaddata(row[rols]);
+				fieldList.push_back(myreaddata);
+			}
+			dataTotalList.push_back(fieldList);
+			listrow++;
 		}
-		dataTotalList.push_back(fieldList);
-		listrow++;
 	}
-	
+
 	mysql_free_result(res);
 
-	return false;
+	return true;
 }
 
-bool AcGeOperateDatabase::findDataByPara(CString database_tableName)
+
+bool AcGeOperateDatabase::findDataByPara(CString database_tableName,\
+	std::vector<CString>fieldNameList, std::vector<CString>paraList)
 {
-	CString tempSql = "select * from " + database_tableName;
-	if (mysql_real_query(&m_sqlCon, tempSql, tempSql.GetLength()) == 1)// ²éÑ¯Êı¾İ¿âÖĞµÄÌØ¶¨±í  //1ÊÇÊ§°Ü£¬0ÊÇ³É¹¦
+	CString tempSql="";
+	if (fieldNameList .size()==0&& paraList .size()== 0)
+	{
+		tempSql = "select * from " + database_tableName;
+	}
+	else
+	{
+		tempSql = "select * from " + database_tableName + " where " ;
+		for (int i=0;i<fieldNameList.size();i++)
+		{
+			if (i==fieldNameList.size()-1)
+			{
+				tempSql += database_tableName + "." + fieldNameList[i] + "=" + "\"" + paraList[i] + "\"" ;
+			}
+			else
+			{
+				tempSql += database_tableName + "." + fieldNameList[i] + "=" + "\"" + paraList[i] + "\""+" and ";
+			}
+		}
+	}
+	if (mysql_real_query(&m_sqlCon, tempSql, tempSql.GetLength()) == 1)// æŸ¥è¯¢æ•°æ®åº“ä¸­çš„ç‰¹å®šè¡¨  //1æ˜¯å¤±è´¥ï¼Œ0æ˜¯æˆåŠŸ
 	{
 		CString temp = mysql_error(&m_sqlCon);
 		AfxMessageBox(temp);
@@ -85,19 +110,29 @@ bool AcGeOperateDatabase::findDataByPara(CString database_tableName)
 	return true;
 }
 
+bool AcGeOperateDatabase::getFiledNameList(std::vector<CString>& filedList)
+{
+	if (m_fieldList.size()==0)
+	{
+		return false;
+	}
+	filedList = m_fieldList;
+	return true;
+}
+
 bool AcGeOperateDatabase::insertDataToDatabase(CString database_tableName, std::vector<std::vector<CString>>insertData)
 {
-	CString temSql = "INSERT " + database_tableName + " (";
+	CString temSql = "INSERT ";
+	temSql+=" INTO "+database_tableName + "(";
 	if (m_fieldList.size() <= 0)
 		return false;
 	for (int i = 0; i < m_fieldList.size()-1; i++)
 	{
-		temSql += m_fieldList[i];
+		temSql += database_tableName+"."+m_fieldList[i];
 		temSql += ",";
 	}
-	temSql += m_fieldList[m_fieldList.size() - 1];
-	temSql += ")";
-	temSql += "VALUES";
+	temSql += database_tableName + "."+m_fieldList[m_fieldList.size() - 1]+ ")";
+	temSql +="VALUES";
 	
 	for (int m = 0; m < insertData.size(); m++)
 	{
@@ -121,10 +156,10 @@ bool AcGeOperateDatabase::insertDataToDatabase(CString database_tableName, std::
 			temSqlSeg += ");";
 		temSql += temSqlSeg;
      }
-	if (mysql_real_query(&m_sqlCon, temSql, temSql.GetLength()) == 1)//   //1ÊÇÊ§°Ü£¬0ÊÇ³É¹¦
+	if (mysql_real_query(&m_sqlCon, temSql, temSql.GetLength()) == 1)//   //1æ˜¯å¤±è´¥ï¼Œ0æ˜¯æˆåŠŸ
 	{
 		CString temp= mysql_error(&m_sqlCon);
-		AfxMessageBox(temp);
+		AfxMessageBox(temp+"è¯·æ£€æŸ¥æ˜¯å¦æœ‰é‡å¤æ•°æ®");
 		return false;
 	}
 	return true;
@@ -132,14 +167,23 @@ bool AcGeOperateDatabase::insertDataToDatabase(CString database_tableName, std::
 
 bool AcGeOperateDatabase::deleteDataFromDatabase(CString database_tableName,CString fieldName, CString delete_para)
 {
-	CString tempSql = "delete  from " + database_tableName+ " where "+fieldName+" = "+ delete_para;
-	if (mysql_real_query(&m_sqlCon, tempSql, tempSql.GetLength()) == 1)// ²éÑ¯Êı¾İ¿âÖĞµÄÌØ¶¨±í  //1ÊÇÊ§°Ü£¬0ÊÇ³É¹¦
+	CString tempSql = "delete  from " + database_tableName + " where " + fieldName + " = " + R"(")"+delete_para +R"(")";
+	if (mysql_real_query(&m_sqlCon, tempSql, tempSql.GetLength()) == 1)// æŸ¥è¯¢æ•°æ®åº“ä¸­çš„ç‰¹å®šè¡¨  //1æ˜¯å¤±è´¥ï¼Œ0æ˜¯æˆåŠŸ
 	{
 		CString temp = mysql_error(&m_sqlCon);
 		AfxMessageBox(temp);
 		return false;
 	}
 	return true;
+}
+
+bool AcGeOperateDatabase::setFiledData(std::vector<CString> filedList)
+{
+	for (int i=0;i<filedList.size();i++)
+	{
+		m_fieldList.push_back(filedList[i]);
+	}
+	return false;
 }
 
 
