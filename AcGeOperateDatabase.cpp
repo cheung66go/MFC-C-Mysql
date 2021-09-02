@@ -12,9 +12,10 @@ AcGeOperateDatabase::~AcGeOperateDatabase()
 	mysql_close(&m_sqlCon);//关闭Mysql连接  
 }
 
-bool AcGeOperateDatabase::connectMysql(CString &m_username, CString &m_password, CString &databaseName,const int database_port)
+bool AcGeOperateDatabase::connectMysql(CString &m_username, CString &m_password, CString m_ip,const int database_port, CString databaseName)
 {
-	if (!mysql_real_connect(&m_sqlCon, "159.138.49.84", m_username, m_password, databaseName, database_port, NULL, 0))//localhost:服务器地址，可以直接填入IP;root:账号;123:密码;test:数据库名;3306:网络端口  
+	//localhost:服务器地址，可以直接填入IP;root:账号;123:密码;test:数据库名;3306:网络端口  
+	if (!mysql_real_connect(&m_sqlCon, m_ip, m_username, m_password, databaseName, database_port, NULL, 0))
 	{
 		CString temp = mysql_error(&m_sqlCon);
 		AfxMessageBox(temp);
@@ -22,9 +23,16 @@ bool AcGeOperateDatabase::connectMysql(CString &m_username, CString &m_password,
 	}
 	else//连接成功则继续访问数据库
 	{
+		m_database = databaseName;
 		return true;
 	}
 
+}
+
+bool AcGeOperateDatabase::disconnectMysql()
+{
+	mysql_close(&m_sqlCon);//关闭Mysql连接  
+	return true;
 }
 
 bool AcGeOperateDatabase::preInforFromDatabase(CString database_tableName,\
@@ -40,10 +48,8 @@ bool AcGeOperateDatabase::preInforFromDatabase(CString database_tableName,\
 	{
 		return false;
 	}
-
 	//列数
 	unsigned int cols = mysql_num_fields(res);
-
 	//获取数据行数
 	int rows=0;
 	rows=mysql_affected_rows(&m_sqlCon);
@@ -52,10 +58,8 @@ bool AcGeOperateDatabase::preInforFromDatabase(CString database_tableName,\
 	for (int i = 0; MYSQL_FIELD *fd = mysql_fetch_field(res); i++)  
 		m_fieldList.push_back(fd->name);
 
-	// 获取列数
-	int j = mysql_num_fields(res);  
 
-	if (isGetData == true)
+	if (isGetData == true)//是否想要获得数据
 	{
 		int listrow = 0;
 		MYSQL_ROW row;
@@ -78,9 +82,42 @@ bool AcGeOperateDatabase::preInforFromDatabase(CString database_tableName,\
 }
 
 
+bool AcGeOperateDatabase::queryDatabase(CString tempSql, std::vector<std::vector<CString>>&databasesList,bool bGetData)
+{
+	mysql_query(&m_sqlCon, "SET NAMES gbk");
+
+	if (mysql_real_query(&m_sqlCon, tempSql, tempSql.GetLength()) == 1)// 查询数据库中的特定表  //1是失败，0是成功
+	{
+		CString temp = mysql_error(&m_sqlCon);
+		AfxMessageBox(temp);
+		return false;
+	}
+	if (bGetData==true)
+	{
+		MYSQL_RES *res = mysql_store_result(&m_sqlCon);//得到存储结果集  
+		if (NULL == res)//如果为空则返回
+		{
+			return false;
+		}
+		MYSQL_ROW row;
+		while (row = mysql_fetch_row(res))//重复读取行，把数据放入列表中，直到row为NULL  
+		{
+			std::vector<CString>tempList;
+			for (int rols = 0; rols < mysql_num_fields(res); rols++)
+			{
+				CString myreaddata(row[rols]);
+				tempList.push_back(myreaddata);
+			}
+			databasesList.push_back(tempList);
+		}
+	}
+	return true;
+}
+
 bool AcGeOperateDatabase::findDataByPara(CString database_tableName,\
 	std::vector<CString>fieldNameList, std::vector<CString>paraList)
 {
+	
 	CString tempSql="";
 	if (fieldNameList .size()==0&& paraList .size()== 0)
 	{
@@ -110,6 +147,20 @@ bool AcGeOperateDatabase::findDataByPara(CString database_tableName,\
 	return true;
 }
 
+bool AcGeOperateDatabase::getDatabaseList(std::vector<std::vector<CString>>&databasesList)
+{
+	CString tempsql = "show databases;";
+	queryDatabase(tempsql,databasesList);
+	return true;
+}
+
+bool AcGeOperateDatabase::getTableNameList(std::vector<std::vector<CString>>& databasesList)
+{
+	CString tempsql = "show tables;";
+	queryDatabase(tempsql, databasesList);
+	return true;
+}
+
 bool AcGeOperateDatabase::getFiledNameList(std::vector<CString>& filedList)
 {
 	if (m_fieldList.size()==0)
@@ -117,6 +168,30 @@ bool AcGeOperateDatabase::getFiledNameList(std::vector<CString>& filedList)
 		return false;
 	}
 	filedList = m_fieldList;
+	return true;
+}
+
+bool AcGeOperateDatabase::getAllTableDataList(CString table, std::vector<std::vector<CString>>& databasesList, std::vector<CString>fieldNameList , std::vector<CString>paraList )
+{
+	CString tempsql = "select * from " + table + ";";
+
+	findDataByPara(table, fieldNameList, paraList);
+	MYSQL_RES *res = mysql_store_result(&m_sqlCon);//得到存储结果集  
+	if (NULL == res)//如果为空则返回
+	{
+		return false;
+	}
+	MYSQL_ROW row;
+	while (row = mysql_fetch_row(res))//重复读取行，把数据放入列表中，直到row为NULL  
+	{
+		std::vector<CString>tempList;
+		for (int rols = 0; rols < mysql_num_fields(res); rols++)
+		{
+			CString myreaddata(row[rols]);
+			tempList.push_back(myreaddata);
+		}
+		databasesList.push_back(tempList);
+	}
 	return true;
 }
 
@@ -177,12 +252,12 @@ bool AcGeOperateDatabase::deleteDataFromDatabase(CString database_tableName,CStr
 	return true;
 }
 
-bool AcGeOperateDatabase::setFiledData(std::vector<CString> filedList)
+bool AcGeOperateDatabase::setCurrentDatabase(CString database)
 {
-	for (int i=0;i<filedList.size();i++)
-	{
-		m_fieldList.push_back(filedList[i]);
-	}
+	CString tempSql;
+	tempSql.Format("use %s", database);
+	std::vector<std::vector<CString>>dataList;
+	queryDatabase(tempSql, dataList,false);
 	return false;
 }
 
