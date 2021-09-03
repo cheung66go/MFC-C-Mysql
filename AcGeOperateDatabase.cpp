@@ -14,7 +14,6 @@ AcGeOperateDatabase::~AcGeOperateDatabase()
 
 bool AcGeOperateDatabase::connectMysql(CString &m_username, CString &m_password, CString m_ip,const int database_port, CString databaseName)
 {
-	//localhost:服务器地址，可以直接填入IP;root:账号;123:密码;test:数据库名;3306:网络端口  
 	if (!mysql_real_connect(&m_sqlCon, m_ip, m_username, m_password, databaseName, database_port, NULL, 0))
 	{
 		CString temp = mysql_error(&m_sqlCon);
@@ -214,14 +213,25 @@ bool AcGeOperateDatabase::insertDataToDatabase(CString database_tableName, std::
 		CString temSqlSeg = "(";
 		for (int n = 0; n < insertData[m].size(); n++)
 		{
-			temSqlSeg += "\"";
-			temSqlSeg += insertData[m][n];
-			if (n != insertData[m].size() - 1)
+			if (insertData[m][n] == "")
 			{
-				temSqlSeg += "\",";
+				temSqlSeg += "NULL";
+				if (n != insertData[m].size() - 1)
+				{
+					temSqlSeg += ",";
+				}
 			}
-			else
+			else 
+			{
 				temSqlSeg += "\"";
+				temSqlSeg += insertData[m][n];
+				if (n != insertData[m].size() - 1)
+				{
+					temSqlSeg += "\",";
+				}
+				else
+					temSqlSeg += "\"";
+			}
 	    }
 		if (m!=insertData.size()-1)
 		{
@@ -234,7 +244,7 @@ bool AcGeOperateDatabase::insertDataToDatabase(CString database_tableName, std::
 	if (mysql_real_query(&m_sqlCon, temSql, temSql.GetLength()) == 1)//   //1是失败，0是成功
 	{
 		CString temp= mysql_error(&m_sqlCon);
-		AfxMessageBox(temp+"请检查是否有重复数据");
+		AfxMessageBox(temp);
 		return false;
 	}
 	return true;
@@ -258,7 +268,7 @@ bool AcGeOperateDatabase::setCurrentDatabase(CString database)
 	tempSql.Format("use %s", database);
 	std::vector<std::vector<CString>>dataList;
 	queryDatabase(tempSql, dataList,false);
-	return false;
+	return true;
 }
 
 
